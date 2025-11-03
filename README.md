@@ -225,6 +225,3 @@ go test ./...
 * Extend Grafana dashboards with database performance metrics
 
 ---
-
-Developed by **IDiShu** as part of a DevOps monitoring and logging learning module.
-For issues, feature requests, or contributions — open an Issue or Pull Request on GitHub.
