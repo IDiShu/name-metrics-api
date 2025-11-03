@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: name-api-migrate
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: name-api:latest
+          imagePullPolicy: IfNotPresent
+          workingDir: /app
+          # ⚠️ Ниже команды — best effort. В твоём фреймворке обычно так:
+          #   name-api migrate up
+          # Если у тебя другой сабкоманд — подправь.
+          command: ["/app/name-api", "migrate", "up"]
+          env:
+            # те же ENV, что и в основном деплое (доступ к БД, ключи и т.д.)
+            - name: DATABASE_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: postgres
+                  key: dsn

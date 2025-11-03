@@ -1,0 +1,18 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: name-api
+  namespace: default
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    secretName: name-local-tls
+  routes:
+  - match: Host(`name.local`) && PathPrefix(`/api-name`)
+    kind: Rule
+    middlewares:
+      - name: strip-api-name
+    services:
+      - name: name-api
+        port: 80

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-api
+  labels:
+    app: name-api
+spec:
+  type: ClusterIP
+  selector:
+    app: name-api
+  ports:
+  - name: http           # ✅ обязательно! ServiceMonitor ищет имя ПОРТА!
+    port: 80             # сервис внутри кластера
+    targetPort: 8080     # реальный порт приложения

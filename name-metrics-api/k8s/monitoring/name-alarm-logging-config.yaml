@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: name-alarm-logging-config
+  namespace: monitoring
+data:
+  LOG_LEVEL: "info"     # можно потом менять live на debug / warn / error
+  LOG_FORMAT: "json"    # принудительно JSON (готово для ELK, Loki и Grafana Explore)

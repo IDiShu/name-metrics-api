@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: name-alarm-monitor
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: name-alarm-api
+  namespaceSelector:
+    matchNames:
+      - monitoring  # ← ОБЯЗАТЕЛЬНО, если твой name-alarm-api тоже в monitoring
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 10s

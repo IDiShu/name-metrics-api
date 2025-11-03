@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: name-alarm-api
+  namespace: monitoring
+  labels:
+    app: name-alarm-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: name-alarm-api
+  template:
+    metadata:
+      labels:
+        app: name-alarm-api
+    spec:
+      dnsPolicy: ClusterFirst
+      dnsConfig:
+        searches:
+          - default.svc.cluster.local
+      initContainers:
+        - name: wait-for-db
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for 30s before starting main container..."
+              sleep 30
+      containers:
+        # --- MAIN APPLICATION CONTAINER ---
+        - name: name-alarm-api
+          image: name-api:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: POSTGRES_HOST
+              value: postgres.default.svc.cluster.local
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              value: secure_user
+            - name: POSTGRES_PASSWORD
+              value: "o)L6AYf@<59z"
+            - name: POSTGRES_DB
+              value: name_api
+            - name: LOG_LEVEL
+                configMapKeyRef:
+                  name: name-alarm-logging-config
+                  key: LOG_LEVEL
+            - name: LOG_FORMAT
+              valueFrom:
+                configMapKeyRef:
+                  name: name-alarm-logging-config
+                  key: LOG_FORMAT
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+        # --- SIDECAR FOR PROMETHEUS METRICS ---
+        - name: statsd-exporter
+          image: prom/statsd-exporter:v0.26.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9102
+              name: metrics
+          args:
+            - "--statsd.mapping-config=/etc/statsd/mappings.yml"
+          volumeMounts:
+            - name: statsd-mapping
+              mountPath: /etc/statsd
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+      volumes:
+        - name: statsd-mapping
+          configMap:
+            name: statsd-mapping-config
+---
+# --- CONFIGMAP FOR STATSD MAPPINGS ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: statsd-mapping-config
+  namespace: monitoring
+data:
+  mappings.yml: |
+    mappings:
+      - match: "*"
+        name: app_log_lines_total
+        labels:
+          source: "stdout"
+---
+# --- SERVICE (HTTP + METRICS) ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-alarm-api
+  namespace: monitoring
+  labels:
+    app: name-alarm-api
+spec:
+  selector:
+    app: name-alarm-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      port: 9102
+      targetPort: 9102
+---
+# --- SERVICEMONITOR FOR PROMETHEUS ---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: name-alarm-monitor
+  namespace: monitoring
+  labels:
+    app: name-alarm-api
+spec:
+  selector:
+    matchLabels:
+      app: name-alarm-api
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 10s

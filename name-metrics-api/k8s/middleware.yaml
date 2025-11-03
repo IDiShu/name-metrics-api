@@ -1,0 +1,9 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-api-name
+  namespace: default
+spec:
+  replacePathRegex:
+    regex: "^/api-name(.*)"
+    replacement: "/name$1"
